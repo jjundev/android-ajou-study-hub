@@ -90,13 +90,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.rootContainer) { view, insets ->
-            val mask = WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.ime()
-            val insetValues = insets.getInsets(mask)
+            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
             view.setPadding(
-                insetValues.left,
-                insetValues.top,
-                insetValues.right,
-                insetValues.bottom
+                imeInsets.left,
+                imeInsets.top,
+                imeInsets.right,
+                imeInsets.bottom
             )
             insets
         }
