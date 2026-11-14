@@ -118,6 +118,7 @@ class MainActivityErrorAndBackTest {
 
             scenario.onActivity { activity ->
                 val webView = activity.findViewById<WebView>(R.id.webView)
+                webView.clearHistory()
                 webView.loadDataWithBaseURL(
                     "https://ajou-study-hub.johnshin617.workers.dev/page2",
                     "<html><body><h1>Page 2</h1></body></html>",
