@@ -223,7 +223,7 @@ class MainActivity : AppCompatActivity() {
                 super.onReceivedHttpError(view, request, errorResponse)
                 if (request != null) {
                     val statusCode = errorResponse?.statusCode
-                    val reason = errorResponse?.reasonPhrase ?: "HTTP $statusCode"
+                    val reason = errorResponse?.reasonPhrase?.takeIf { it.isNotBlank() } ?: "HTTP $statusCode"
                     handleFrameLoadError(request.isForMainFrame, reason)
                 }
             }

@@ -107,7 +107,7 @@ class DownloadTransfer(
                     currentUrl = try {
                         URI(currentUrl).resolve(location).toString()
                     } catch (e: Exception) {
-                        return DownloadResult.Failed("Invalid redirect URL: $location")
+                        return DownloadResult.Failed("Invalid redirect location")
                     }
 
                     hops++

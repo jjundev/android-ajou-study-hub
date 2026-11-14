@@ -17,13 +17,13 @@
 ## 2. 핵심 아키텍처 및 구현 기능
 
 1. **내비게이션 정책 (`NavigationPolicy`)**
-   - 호스트 도메인(`ajou-study-hub.johnshin617.workers.dev` 및 빌드 타깃 URL) 내부 탐색은 인앱 WebView 내에서 연속 유지.
-   - 외부 도메인 링크 및 `window.open`/새 탭 요청은 안전하게 **Chrome Custom Tabs** 또는 기본 웹 브라우저로 위임.
-   - `intent:`, `market:` 등 비-HTTP 스키마의 안전한 외부 앱 실행 처리.
+   - 신뢰 호스트(`ajou-study-hub.johnshin617.workers.dev` 및 빌드 타깃 URL)의 HTTPS 내부 탐색은 인앱 WebView 내에서 연속 유지.
+   - 외부 도메인 HTTPS 링크 및 사용자 제스처가 동반된 `mailto:`/`tel:` 링크는 **Chrome Custom Tabs** 또는 기본 웹 브라우저(`ACTION_VIEW`)로 안전하게 위임.
+   - 비사용자 제스처 팝업 및 보안상 위험한 스키마(`http:`, `javascript:`, `file:`, `content:`, `intent:`, `data:` 등)는 전면 차단(`BLOCK`).
 
 2. **다운로드 및 파일 핸드오프 (`DownloadTransfer` + `FileProvider`)**
-   - HTTP 및 Blob(`blob:...`) 다운로드를 네이티브 파이프라인에서 수신.
-   - 앱 내부 캐시 디렉터리에 안전하게 저장한 뒤, Android `FileProvider`(`content://com.jjundev.ajoustudyhub.fileprovider`) 권한을 부여하여 외부 PDF/문서 뷰어로 안전하게 핸드오프.
+   - 신뢰 호스트의 HTTPS 다운로드(`HttpURLConnection`)를 리다이렉트 홉마다 호스트 재검증하여 쿠키 유출 방지 (`blob:` 미수신).
+   - 경로 순회(Path Traversal) 방지 및 HTML 응답 위장 검증을 거쳐 앱 내부 캐시 디렉터리에 안전하게 저장한 뒤, Android `FileProvider`(`content://com.jjundev.ajoustudyhub.fileprovider`) 권한을 부여하여 외부 PDF/문서 뷰어로 안전하게 핸드오프.
 
 3. **몰입형 전체화면 (`Immersive Sticky Fullscreen`)**
    - 학습 몰입도를 극대화하기 위해 시스템 상태바 및 내비게이션 바를 기본 숨김 처리(`WindowInsetsCompat.Type.systemBars()`).
