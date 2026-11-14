@@ -9,7 +9,7 @@
 - **애플리케이션 ID / 네임스페이스**: `com.jjundev.ajoustudyhub`
 - **앱 표시 이름**: `아주 학습 자료실`
 - **SDK 사양**: `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26` (Android 8.0 Oreo 이상)
-- **언어 및 런타임**: Kotlin 2.1.10, Java 17 (`JavaVersion.VERSION_17`)
+- **언어 및 런타임**: Kotlin 2.0.21, Java 17 (`JavaVersion.VERSION_17`)
 - **기본 운영 URL**: `https://ajou-study-hub.johnshin617.workers.dev/`
 
 ---
