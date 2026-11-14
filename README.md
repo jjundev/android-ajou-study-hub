@@ -84,7 +84,7 @@ adb shell am start -n com.jjundev.ajoustudyhub/.MainActivity
 ## 5. 실기기(`TB138FC`) 인수 검증 결과
 
 - **검증 일시**: 2026-11-14
-- **대상 기기**: Lenovo Tab P11 Gen2 (`TB138FC`, Android 13 Tiramisu, 디바이스 ID: `HA1VLF8S`)
+- **대상 기기**: Lenovo Tab P11 Gen2 (`TB138FC`, Android 13 Tiramisu)
 
 ### 5.1 직접 검증 완료 항목 (`adb` / UIAutomator 검증)
 
