@@ -97,4 +97,26 @@ class BackNavigationPolicyTest {
         )
         assertEquals(-1, policy.resolveBackSteps(1, malformedCurrentHistory))
     }
+
+    @Test
+    fun additionalInAppHostsEnforcesStandardPortConsistentWithNavigationPolicy() {
+        val multiHostPolicy = BackNavigationPolicy(
+            allowedBaseUrl = "https://ajou-study-hub.johnshin617.workers.dev/",
+            additionalInAppHosts = setOf("docs.ajou.ac.kr")
+        )
+
+        val trustedPortHistory = listOf(
+            "https://ajou-study-hub.johnshin617.workers.dev/",
+            "https://docs.ajou.ac.kr/content/a.html",
+            "https://docs.ajou.ac.kr/content/a.html#s1"
+        )
+        assertEquals(-2, multiHostPolicy.resolveBackSteps(2, trustedPortHistory))
+
+        val nonStandardPortHistory = listOf(
+            "https://ajou-study-hub.johnshin617.workers.dev/",
+            "https://docs.ajou.ac.kr:8443/content/a.html",
+            "https://docs.ajou.ac.kr:8443/content/a.html#s1"
+        )
+        assertEquals(-1, multiHostPolicy.resolveBackSteps(2, nonStandardPortHistory))
+    }
 }

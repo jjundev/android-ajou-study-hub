@@ -73,7 +73,8 @@ class BackNavigationPolicy(
         val host = uri.host?.lowercase(Locale.ROOT) ?: return null
         val port = effectivePort(scheme, uri.port)
         val matchesBaseHost = baseHost != null && host == baseHost && port == basePort
-        val matchesAdditionalHost = host in normalizedAdditionalHosts
+        val matchesAdditionalHost = host in normalizedAdditionalHosts &&
+            ((scheme == "https" && port == 443) || (allowInsecureHttpForTests && scheme == "http" && port == 80))
         if (!matchesBaseHost && !matchesAdditionalHost) {
             return null
         }
