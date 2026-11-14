@@ -183,4 +183,153 @@ class MainActivityErrorAndBackTest {
             assertTrue("Activity should finish when back pressed with no web history", isFinishing)
         }
     }
+
+    @Test
+    fun backPressSkipsSameContentDocumentHashHistoryAndReturnsToMain() {
+        val mainUrl = "https://ajou-study-hub.johnshin617.workers.dev/"
+        val contentUrl = "https://ajou-study-hub.johnshin617.workers.dev/content/note.html"
+
+        androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            fun waitForPage(expectedUrl: String, expectedBodyText: String) {
+                var matched = false
+                val deadline = SystemClock.uptimeMillis() + 5000
+                while (SystemClock.uptimeMillis() < deadline && !matched) {
+                    val latch = java.util.concurrent.CountDownLatch(1)
+                    scenario.onActivity { activity ->
+                        val webView = activity.findViewById<android.webkit.WebView>(R.id.webView)
+                        if (webView.url == expectedUrl) {
+                            webView.evaluateJavascript("document.body ? document.body.innerText : ''") { result ->
+                                if (result != null && result.contains(expectedBodyText)) {
+                                    matched = true
+                                }
+                                latch.countDown()
+                            }
+                        } else {
+                            latch.countDown()
+                        }
+                    }
+                    latch.await(1, java.util.concurrent.TimeUnit.SECONDS)
+                    if (!matched) {
+                        Thread.sleep(50)
+                    }
+                }
+                assertTrue("Timed out waiting for $expectedUrl containing $expectedBodyText", matched)
+            }
+
+            scenario.onActivity { activity ->
+                val webView = activity.findViewById<android.webkit.WebView>(R.id.webView)
+                webView.stopLoading()
+                val originalClient = webView.webViewClient
+                webView.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: android.webkit.WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): android.webkit.WebResourceResponse? {
+                        val requestUrl = request?.url?.toString()
+                        val html = when (requestUrl) {
+                            mainUrl -> "<html><body>Main Catalog</body></html>"
+                            contentUrl -> """
+                                <html><body style="margin:0;padding:0;">
+                                <button id="nextBtn" style="width:100vw;height:100vh;display:block;"
+                                  onclick="window.__step=(window.__step||0)+1; history.pushState(null,'','#s'+window.__step);">
+                                  Note Body
+                                </button>
+                                </body></html>
+                            """.trimIndent()
+                            else -> null
+                        }
+                        if (html != null) {
+                            return android.webkit.WebResourceResponse(
+                                "text/html",
+                                "UTF-8",
+                                java.io.ByteArrayInputStream(html.toByteArray(Charsets.UTF_8))
+                            )
+                        }
+                        return android.webkit.WebResourceResponse(
+                            "text/plain",
+                            "UTF-8",
+                            java.io.ByteArrayInputStream(ByteArray(0))
+                        )
+                    }
+
+                    override fun shouldOverrideUrlLoading(
+                        view: android.webkit.WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): Boolean {
+                        return originalClient.shouldOverrideUrlLoading(view, request)
+                    }
+
+                    override fun onPageStarted(
+                        view: android.webkit.WebView?,
+                        url: String?,
+                        favicon: android.graphics.Bitmap?
+                    ) {
+                        originalClient.onPageStarted(view, url, favicon)
+                    }
+
+                    override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
+                        originalClient.onPageFinished(view, url)
+                    }
+                }
+                webView.loadUrl(mainUrl)
+            }
+            waitForPage(mainUrl, "Main Catalog")
+
+            scenario.onActivity { activity ->
+                val webView = activity.findViewById<android.webkit.WebView>(R.id.webView)
+                webView.clearHistory()
+                webView.loadUrl(contentUrl)
+            }
+            waitForPage(contentUrl, "Note Body")
+
+            fun waitForUrl(expectedUrl: String) {
+                var currentUrl: String? = null
+                val deadline = SystemClock.uptimeMillis() + 5000
+                while (SystemClock.uptimeMillis() < deadline && currentUrl != expectedUrl) {
+                    scenario.onActivity { activity ->
+                        currentUrl = activity.findViewById<android.webkit.WebView>(R.id.webView).url
+                    }
+                    if (currentUrl != expectedUrl) {
+                        Thread.sleep(50)
+                    }
+                }
+                org.junit.Assert.assertEquals(expectedUrl, currentUrl)
+            }
+
+            onView(withId(R.id.webView)).perform(click())
+            waitForUrl("$contentUrl#s1")
+            onView(withId(R.id.webView)).perform(click())
+            waitForUrl("$contentUrl#s2")
+
+            scenario.onActivity { activity ->
+                activity.onBackPressedDispatcher.onBackPressed()
+            }
+
+            var currentUrl: String? = null
+            var isFinishing = false
+            var canGoBack = true
+            val backDeadline = SystemClock.uptimeMillis() + 5000
+            while (SystemClock.uptimeMillis() < backDeadline && currentUrl != mainUrl) {
+                scenario.onActivity { activity ->
+                    val webView = activity.findViewById<android.webkit.WebView>(R.id.webView)
+                    currentUrl = webView.url
+                    isFinishing = activity.isFinishing
+                    canGoBack = webView.canGoBack()
+                }
+                if (currentUrl != mainUrl) {
+                    Thread.sleep(50)
+                }
+            }
+
+            org.junit.Assert.assertFalse(
+                "Activity should not finish when returning to main catalog",
+                isFinishing
+            )
+            org.junit.Assert.assertEquals(mainUrl, currentUrl)
+            org.junit.Assert.assertFalse(
+                "WebView should not have back history before main catalog",
+                canGoBack
+            )
+        }
+    }
 }

@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     internal var navigationPolicy: NavigationPolicy = NavigationPolicy(BuildConfig.STUDY_HUB_URL)
+    internal var backNavigationPolicy: BackNavigationPolicy = BackNavigationPolicy(BuildConfig.STUDY_HUB_URL)
     internal var downloadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var hasMainFrameError: Boolean = false
 
@@ -104,8 +105,13 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackNavigation() {
         val backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.webView.canGoBack()) {
-                    binding.webView.goBack()
+                val history = binding.webView.copyBackForwardList()
+                val historyUrls = (0 until history.size).map { index ->
+                    history.getItemAtIndex(index).url
+                }
+                val steps = backNavigationPolicy.resolveBackSteps(history.currentIndex, historyUrls)
+                if (steps != null && binding.webView.canGoBackOrForward(steps)) {
+                    binding.webView.goBackOrForward(steps)
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
