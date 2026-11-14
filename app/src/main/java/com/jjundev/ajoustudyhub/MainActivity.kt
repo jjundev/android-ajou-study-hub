@@ -14,15 +14,19 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.google.android.material.snackbar.Snackbar
 import com.jjundev.ajoustudyhub.databinding.ActivityMainBinding
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     internal var navigationPolicy: NavigationPolicy = NavigationPolicy(BuildConfig.STUDY_HUB_URL)
+    internal var downloadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,6 +124,78 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
         }
+
+        binding.webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+            handleDownload(url, contentDisposition, mimeType)
+        }
+    }
+
+    private fun handleDownload(url: String?, contentDisposition: String?, mimeType: String?) {
+        if (url.isNullOrBlank()) {
+            return
+        }
+
+        if (!navigationPolicy.isTrustedInAppUrl(url)) {
+            openExternally(url)
+            return
+        }
+
+        val transfer = DownloadTransfer(
+            policy = navigationPolicy,
+            cacheRoot = cacheDir,
+            cookieProvider = { targetUrl ->
+                CookieManager.getInstance().getCookie(targetUrl)
+            }
+        )
+
+        downloadExecutor.execute {
+            val result = transfer.fetchToCache(url, mimeType, contentDisposition)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) {
+                    return@runOnUiThread
+                }
+                handleDownloadResult(result)
+            }
+        }
+    }
+
+    private fun handleDownloadResult(result: DownloadResult) {
+        when (result) {
+            is DownloadResult.Ready -> {
+                try {
+                    val uri = FileProvider.getUriForFile(
+                        this,
+                        "${BuildConfig.APPLICATION_ID}.fileprovider",
+                        result.file
+                    )
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, result.mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(intent)
+                } catch (e: ActivityNotFoundException) {
+                    showDownloadSnackbar(R.string.external_app_unavailable)
+                } catch (e: Exception) {
+                    showDownloadSnackbar(R.string.download_failed)
+                }
+            }
+            is DownloadResult.AuthRequired -> {
+                showDownloadSnackbar(R.string.download_auth_required)
+            }
+            is DownloadResult.UntrustedRedirect -> {
+                showDownloadSnackbar(R.string.download_untrusted_redirect)
+            }
+            is DownloadResult.Unsupported -> {
+                showDownloadSnackbar(R.string.download_unsupported)
+            }
+            is DownloadResult.Failed -> {
+                showDownloadSnackbar(R.string.download_failed)
+            }
+        }
+    }
+
+    private fun showDownloadSnackbar(stringResId: Int) {
+        Snackbar.make(binding.rootContainer, stringResId, Snackbar.LENGTH_SHORT).show()
     }
 
     private fun handleNewWindowUrl(url: String) {
@@ -171,6 +247,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        downloadExecutor.shutdown()
         binding.webView.destroy()
         super.onDestroy()
     }
